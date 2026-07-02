@@ -1,4 +1,4 @@
-# This stops private files, uploaded PDFs, and temporary Python files from going to GitHub.
+# make the folders visible but still keep uploaded files private.
 __pycache__/
 .env
 *.pyc
