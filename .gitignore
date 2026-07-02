@@ -1,6 +1,10 @@
 # This stops private files, uploaded PDFs, and temporary Python files from going to GitHub.
 __pycache__/
 .env
-uploads/
-data/
 *.pyc
+
+uploads/*
+data/*
+
+!uploads/.gitkeep
+!data/.gitkeep
