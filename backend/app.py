@@ -47,6 +47,38 @@ def save_extracted_text(original_filename, text):
 
     return output_path
 
+def split_text_into_chunks(text, chunk_size=800, overlap=150):
+    chunks = []
+    start = 0
+
+    while start < len(text):
+        end = start + chunk_size
+        chunk = text[start:end]
+
+        if chunk.strip():
+            chunks.append(chunk.strip())
+
+        start = end - overlap
+
+    return chunks
+
+def save_chunks(original_filename, chunks):
+    chunks_folder = os.path.join(app.config["PROCESSED_FOLDER"], "chunks")
+    os.makedirs(chunks_folder, exist_ok=True)
+
+    filename_without_extension = os.path.splitext(original_filename)[0]
+    saved_chunk_files = []
+
+    for index, chunk in enumerate(chunks, start=1):
+        chunk_filename = f"{filename_without_extension}_chunk_{index:03}.txt"
+        chunk_path = os.path.join(chunks_folder, chunk_filename)
+
+        with open(chunk_path, "w", encoding="utf-8") as file:
+            file.write(chunk)
+
+        saved_chunk_files.append(chunk_path)
+
+    return saved_chunk_files
 
 @app.route("/")
 def home():
@@ -95,15 +127,19 @@ def upload_file():
                 "message": "File uploaded, but no readable text was found in the PDF.",
                 "filename": safe_filename
             })
+    
+    saved_text_path = save_extracted_text(safe_filename, extracted_text)
 
-        saved_text_path = save_extracted_text(safe_filename, extracted_text)
+    chunks = split_text_into_chunks(extracted_text)
+    saved_chunk_files = save_chunks(safe_filename, chunks)
 
-        return jsonify({
-            "status": "success",
-            "message": "PDF uploaded and text extracted successfully",
-            "filename": safe_filename,
-            "text_file": saved_text_path
-        })
+    return jsonify({
+        "status": "success",
+        "message": "PDF uploaded, text extracted, and chunks created successfully",
+        "filename": safe_filename,
+        "text_file": saved_text_path,
+        "total_chunks": len(saved_chunk_files)
+    })
 
     return jsonify({
         "status": "success",
