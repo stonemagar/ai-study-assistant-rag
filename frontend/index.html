@@ -10,8 +10,13 @@
         <h1>AI Study Assistant</h1>
         <p>Upload your study notes and ask questions using AI.</p>
 
-        <button>Upload Notes</button>
-        <button>Ask a Question</button>
+        <h2>Upload Notes</h2>
+
+        <form action="http://127.0.0.1:5000/upload" method="POST" enctype="multipart/form-data">
+            <input type="file" name="file" accept=".pdf,.txt,.docx" required>
+            <br><br>
+            <button type="submit">Upload File</button>
+        </form>
     </div>
 </body>
 </html>
