@@ -63,7 +63,7 @@ questionForm.addEventListener("submit", async function (event) {
     searchResult.innerHTML = "Searching your notes...";
 
     try {
-        const response = await fetch("http://127.0.0.1:5000/search", {
+        const response = await fetch("http://127.0.0.1:5000/ask", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -77,21 +77,26 @@ questionForm.addEventListener("submit", async function (event) {
 
         console.log("Search result:", result);
 
-        const documents = result.results.documents[0];
+        let output = `
+    <p><strong>Question:</strong> ${result.question}</p>
+    <div class="result-box">
+        <h4>AI Answer</h4>
+        <p>${result.answer}</p>
+    </div>
+`;
 
-        let output = `<p><strong>Question:</strong> ${result.question}</p>`;
-        output += `<h3>Most relevant notes:</h3>`;
+output += `<h3>Retrieved Sources</h3>`;
 
-        documents.forEach(function (doc, index) {
-            output += `
-                <div class="result-box">
-                    <h4>Result ${index + 1}</h4>
-                    <p>${doc}</p>
-                </div>
-            `;
-        });
+result.sources.forEach(function (source, index) {
+    output += `
+        <div class="result-box">
+            <h4>Source ${index + 1}</h4>
+            <p>${source}</p>
+        </div>
+    `;
+});
 
-        searchResult.innerHTML = output;
+searchResult.innerHTML = output;
 
     } catch (error) {
         console.log("Search error:", error);

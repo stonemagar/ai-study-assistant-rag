@@ -3,10 +3,15 @@ import re
 import uuid
 import fitz
 import chromadb
-
+import requests
+from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
+
+
+
+
 
 
 app = Flask(__name__)
@@ -14,6 +19,9 @@ CORS(app)
 
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+load_dotenv(os.path.join(BASE_DIR, ".env"))
+
 
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 PROCESSED_FOLDER = os.path.join(BASE_DIR, "data", "processed_notes")
@@ -263,6 +271,61 @@ def search_vector_db(question, number_of_results=3):
         "distances": [[item["distance"] for item in top_results]]
     }
 
+def generate_ai_answer(question, documents):
+    context = "\n\n".join(documents)
+
+    prompt = f"""
+You are an AI Study Assistant.
+
+Use the study notes below to answer the student's question.
+
+Rules:
+- Answer only from the study notes.
+- If the question asks about one topic, answer only that topic.
+- Do not include related topics unless the question asks for them.
+- Do not add examples, causes, results, names, methods, or bracket examples unless they are written exactly in the notes.
+- For definition questions, give only the definition written in the notes.
+- Keep the answer short and clear.
+- Use British English.
+- Do not start with "Here's an answer" or "To answer your question".
+- Never write both an answer and "I could not find this in the uploaded notes."
+- Say "I could not find this in the uploaded notes." only if there is no relevant information at all.
+
+Student question:
+{question}
+
+Study notes:
+{context}
+
+Final answer only:
+"""
+
+    model_name = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
+
+    response = requests.post(
+        "http://localhost:11434/api/generate",
+        json={
+            "model": model_name,
+            "prompt": prompt,
+            "stream": False,
+            "options": {
+                "temperature": 0
+            }
+        },
+        timeout=120
+    )
+
+    response.raise_for_status()
+
+    result = response.json()
+    answer = result.get("response", "").strip()
+
+    not_found_message = "I could not find this in the uploaded notes."
+
+    if not_found_message in answer and answer.replace(not_found_message, "").strip():
+        answer = answer.replace(not_found_message, "").strip()
+
+    return answer
 
 @app.route("/")
 def home():
@@ -362,6 +425,29 @@ def search_notes():
         "results": results
     })
 
+@app.route("/ask", methods=["POST"])
+def ask_ai():
+    data = request.get_json()
+
+    if not data or "question" not in data:
+        return jsonify({
+            "status": "error",
+            "message": "No question provided"
+        }), 400
+
+    question = data["question"]
+
+    results = search_vector_db(question)
+    documents = results["documents"][0][:3]
+
+    answer = generate_ai_answer(question, documents)
+
+    return jsonify({
+        "status": "success",
+        "question": question,
+        "answer": answer,
+        "sources": documents
+    })
 
 if __name__ == "__main__":
     app.run(debug=True)
