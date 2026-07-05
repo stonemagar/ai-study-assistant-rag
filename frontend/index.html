@@ -12,11 +12,15 @@
 
         <h2>Upload Notes</h2>
 
-        <form action="http://127.0.0.1:5000/upload" method="POST" enctype="multipart/form-data">
-            <input type="file" name="file" accept=".pdf,.txt,.docx" required>
+        <form id="uploadForm" enctype="multipart/form-data">
+            <input type="file" id="fileInput" name="file" accept=".pdf,.txt,.docx" required>
             <br><br>
             <button type="submit">Upload File</button>
         </form>
+
+        <div id="uploadResult"></div>
     </div>
+
+    <script src="script.js"></script>
 </body>
 </html>

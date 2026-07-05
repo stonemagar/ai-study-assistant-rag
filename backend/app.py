@@ -1,19 +1,25 @@
 import os
+import uuid
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from pypdf import PdfReader
+import chromadb
 
 app = Flask(__name__)
+CORS(app)
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 PROCESSED_FOLDER = os.path.join(BASE_DIR, "data", "processed_notes")
+VECTOR_DB_FOLDER = os.path.join(BASE_DIR, "data", "vector_db")
 
 ALLOWED_EXTENSIONS = {"pdf", "txt", "docx"}
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["PROCESSED_FOLDER"] = PROCESSED_FOLDER
+app.config["VECTOR_DB_FOLDER"] = VECTOR_DB_FOLDER
 
 
 def allowed_file(filename):
@@ -47,6 +53,7 @@ def save_extracted_text(original_filename, text):
 
     return output_path
 
+
 def split_text_into_chunks(text, chunk_size=800, overlap=150):
     chunks = []
     start = 0
@@ -61,6 +68,7 @@ def split_text_into_chunks(text, chunk_size=800, overlap=150):
         start = end - overlap
 
     return chunks
+
 
 def save_chunks(original_filename, chunks):
     chunks_folder = os.path.join(app.config["PROCESSED_FOLDER"], "chunks")
@@ -79,6 +87,39 @@ def save_chunks(original_filename, chunks):
         saved_chunk_files.append(chunk_path)
 
     return saved_chunk_files
+
+
+def store_chunks_in_vector_db(original_filename, chunks):
+    os.makedirs(app.config["VECTOR_DB_FOLDER"], exist_ok=True)
+
+    client = chromadb.PersistentClient(path=app.config["VECTOR_DB_FOLDER"])
+
+    collection = client.get_or_create_collection(
+        name="study_notes"
+    )
+
+    ids = []
+    documents = []
+    metadatas = []
+
+    for index, chunk in enumerate(chunks, start=1):
+        chunk_id = f"{original_filename}_{index}_{uuid.uuid4()}"
+
+        ids.append(chunk_id)
+        documents.append(chunk)
+        metadatas.append({
+            "source_file": original_filename,
+            "chunk_number": index
+        })
+
+    collection.add(
+        ids=ids,
+        documents=documents,
+        metadatas=metadatas
+    )
+
+    return len(ids)
+
 
 @app.route("/")
 def home():
@@ -127,19 +168,22 @@ def upload_file():
                 "message": "File uploaded, but no readable text was found in the PDF.",
                 "filename": safe_filename
             })
-    
-    saved_text_path = save_extracted_text(safe_filename, extracted_text)
 
-    chunks = split_text_into_chunks(extracted_text)
-    saved_chunk_files = save_chunks(safe_filename, chunks)
+        saved_text_path = save_extracted_text(safe_filename, extracted_text)
 
-    return jsonify({
-        "status": "success",
-        "message": "PDF uploaded, text extracted, and chunks created successfully",
-        "filename": safe_filename,
-        "text_file": saved_text_path,
-        "total_chunks": len(saved_chunk_files)
-    })
+        chunks = split_text_into_chunks(extracted_text)
+        saved_chunk_files = save_chunks(safe_filename, chunks)
+
+        total_vectors = store_chunks_in_vector_db(safe_filename, chunks)
+
+        return jsonify({
+            "status": "success",
+            "message": "PDF uploaded, text extracted, chunks created, and stored in vector database",
+            "filename": safe_filename,
+            "text_file": saved_text_path,
+            "total_chunks": len(saved_chunk_files),
+            "total_vectors": total_vectors
+        })
 
     return jsonify({
         "status": "success",
