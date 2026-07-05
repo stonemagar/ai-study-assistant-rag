@@ -120,6 +120,20 @@ def store_chunks_in_vector_db(original_filename, chunks):
 
     return len(ids)
 
+def search_vector_db(question, number_of_results=3):
+    client = chromadb.PersistentClient(path=app.config["VECTOR_DB_FOLDER"])
+
+    collection = client.get_or_create_collection(
+        name="study_notes"
+    )
+
+    results = collection.query(
+        query_texts=[question],
+        n_results=number_of_results
+    )
+
+    return results
+
 
 @app.route("/")
 def home():
@@ -191,6 +205,25 @@ def upload_file():
         "filename": safe_filename
     })
 
+@app.route("/search", methods=["POST"])
+def search_notes():
+    data = request.get_json()
+
+    if not data or "question" not in data:
+        return jsonify({
+            "status": "error",
+            "message": "No question provided"
+        }), 400
+
+    question = data["question"]
+
+    results = search_vector_db(question)
+
+    return jsonify({
+        "status": "success",
+        "question": question,
+        "results": results
+    })
 
 if __name__ == "__main__":
     app.run(debug=True)

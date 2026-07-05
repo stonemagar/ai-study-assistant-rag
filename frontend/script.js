@@ -50,3 +50,51 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 });
+
+const questionForm = document.getElementById("questionForm");
+const questionInput = document.getElementById("questionInput");
+const searchResult = document.getElementById("searchResult");
+
+questionForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
+
+    const question = questionInput.value;
+
+    searchResult.innerHTML = "Searching your notes...";
+
+    try {
+        const response = await fetch("http://127.0.0.1:5000/search", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                question: question
+            })
+        });
+
+        const result = await response.json();
+
+        console.log("Search result:", result);
+
+        const documents = result.results.documents[0];
+
+        let output = `<p><strong>Question:</strong> ${result.question}</p>`;
+        output += `<h3>Most relevant notes:</h3>`;
+
+        documents.forEach(function (doc, index) {
+            output += `
+                <div class="result-box">
+                    <h4>Result ${index + 1}</h4>
+                    <p>${doc}</p>
+                </div>
+            `;
+        });
+
+        searchResult.innerHTML = output;
+
+    } catch (error) {
+        console.log("Search error:", error);
+        searchResult.innerHTML = "Error: Could not search notes.";
+    }
+});
