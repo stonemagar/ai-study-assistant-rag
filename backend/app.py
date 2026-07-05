@@ -1,13 +1,17 @@
 import os
+import re
 import uuid
+import fitz
+import chromadb
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
-from pypdf import PdfReader
-import chromadb
+
 
 app = Flask(__name__)
 CORS(app)
+
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -27,17 +31,75 @@ def allowed_file(filename):
 
 
 def extract_text_from_pdf(file_path):
-    reader = PdfReader(file_path)
+    document = fitz.open(file_path)
     extracted_text = ""
 
-    for page_number, page in enumerate(reader.pages, start=1):
-        page_text = page.extract_text()
+    for page_number, page in enumerate(document, start=1):
+        page_text = page.get_text("text")
 
-        if page_text:
+        if page_text.strip():
             extracted_text += f"\n\n--- Page {page_number} ---\n"
             extracted_text += page_text
 
+    document.close()
     return extracted_text
+
+
+def fix_spaced_letters(text):
+    """
+    Fixes PDF text if it appears like:
+    M a c h i n e   L e a r n i n g
+
+    into:
+    Machine Learning
+    """
+
+    sample_tokens = text[:3000].split()
+
+    if not sample_tokens:
+        return text
+
+    single_character_tokens = sum(
+        1 for token in sample_tokens
+        if len(token) == 1 and token.isalnum()
+    )
+
+    ratio = single_character_tokens / len(sample_tokens)
+
+    # Only apply this fix when many tokens are single letters
+    if ratio < 0.4:
+        return text
+
+    word_space_marker = "###WORDSPACE###"
+
+    # Keep bigger spaces as real word spaces
+    text = re.sub(r"[ \t]{2,}", word_space_marker, text)
+
+    # Remove spaces between letters/numbers
+    text = re.sub(r"(?<=[A-Za-z0-9])\s+(?=[A-Za-z0-9])", "", text)
+
+    # Restore word spaces
+    text = text.replace(word_space_marker, " ")
+
+    return text
+
+
+def clean_extracted_text(text):
+    text = fix_spaced_letters(text)
+
+    # Remove too many blank lines
+    text = re.sub(r"\n{3,}", "\n\n", text)
+
+    # Replace repeated spaces and tabs with one space
+    text = re.sub(r"[ \t]+", " ", text)
+
+    # Remove spaces before punctuation
+    text = re.sub(r"\s+([,.!?;:])", r"\1", text)
+
+    # Join broken single lines
+    text = re.sub(r"(?<!\n)\n(?!\n)", " ", text)
+
+    return text.strip()
 
 
 def save_extracted_text(original_filename, text):
@@ -54,13 +116,20 @@ def save_extracted_text(original_filename, text):
     return output_path
 
 
-def split_text_into_chunks(text, chunk_size=800, overlap=150):
+def split_text_into_chunks(text, chunk_size=120, overlap=25):
+    """
+    Splits text into word-based chunks.
+    This avoids the problem of showing text like:
+    M a c h i n e L e a r n i n g
+    """
+
+    words = text.split()
     chunks = []
     start = 0
 
-    while start < len(text):
+    while start < len(words):
         end = start + chunk_size
-        chunk = text[start:end]
+        chunk = " ".join(words[start:end])
 
         if chunk.strip():
             chunks.append(chunk.strip())
@@ -120,6 +189,38 @@ def store_chunks_in_vector_db(original_filename, chunks):
 
     return len(ids)
 
+
+def get_keyword_score(question, document):
+    stop_words = {
+        "what", "when", "where", "which", "who", "why", "how",
+        "is", "are", "was", "were", "the", "a", "an", "and",
+        "or", "to", "of", "in", "on", "for", "with", "about"
+    }
+
+    question_words = re.findall(r"\b[a-zA-Z]{3,}\b", question.lower())
+
+    important_words = [
+        word for word in question_words
+        if word not in stop_words
+    ]
+
+    document_lower = document.lower()
+
+    score = 0
+
+    for word in important_words:
+        if word in document_lower:
+            score += 10
+
+    # Extra boost if the main keyword appears clearly
+    if important_words:
+        main_keyword = important_words[-1]
+        if main_keyword in document_lower:
+            score += 20
+
+    return score
+
+
 def search_vector_db(question, number_of_results=3):
     client = chromadb.PersistentClient(path=app.config["VECTOR_DB_FOLDER"])
 
@@ -127,12 +228,40 @@ def search_vector_db(question, number_of_results=3):
         name="study_notes"
     )
 
+    # Get more results first, then re-rank them
     results = collection.query(
         query_texts=[question],
-        n_results=number_of_results
+        n_results=8,
+        include=["documents", "metadatas", "distances"]
     )
 
-    return results
+    documents = results["documents"][0]
+    metadatas = results["metadatas"][0]
+    distances = results["distances"][0]
+
+    combined_results = []
+
+    for index, document in enumerate(documents):
+        combined_results.append({
+            "document": document,
+            "metadata": metadatas[index],
+            "distance": distances[index],
+            "keyword_score": get_keyword_score(question, document)
+        })
+
+    # Higher keyword score is better.
+    # Lower distance is better.
+    combined_results.sort(
+        key=lambda item: (-item["keyword_score"], item["distance"])
+    )
+
+    top_results = combined_results[:number_of_results]
+
+    return {
+        "documents": [[item["document"] for item in top_results]],
+        "metadatas": [[item["metadata"] for item in top_results]],
+        "distances": [[item["distance"] for item in top_results]]
+    }
 
 
 @app.route("/")
@@ -151,12 +280,18 @@ def health_check():
 @app.route("/upload", methods=["POST"])
 def upload_file():
     if "file" not in request.files:
-        return jsonify({"status": "error", "message": "No file part found"}), 400
+        return jsonify({
+            "status": "error",
+            "message": "No file part found"
+        }), 400
 
     file = request.files["file"]
 
     if file.filename == "":
-        return jsonify({"status": "error", "message": "No file selected"}), 400
+        return jsonify({
+            "status": "error",
+            "message": "No file selected"
+        }), 400
 
     if not allowed_file(file.filename):
         return jsonify({
@@ -175,6 +310,7 @@ def upload_file():
 
     if file_extension == "pdf":
         extracted_text = extract_text_from_pdf(file_path)
+        extracted_text = clean_extracted_text(extracted_text)
 
         if not extracted_text.strip():
             return jsonify({
@@ -205,6 +341,7 @@ def upload_file():
         "filename": safe_filename
     })
 
+
 @app.route("/search", methods=["POST"])
 def search_notes():
     data = request.get_json()
@@ -224,6 +361,7 @@ def search_notes():
         "question": question,
         "results": results
     })
+
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -6,30 +6,82 @@ body {
 }
 
 .container {
-    width: 500px;
-    margin: 100px auto;
+    width: 700px;
+    margin: 60px auto;
     background: white;
     padding: 30px;
     text-align: center;
     border-radius: 10px;
 }
 
+h1 {
+    margin-bottom: 10px;
+}
+
+h2 {
+    margin-top: 30px;
+}
+
 button {
-    padding: 10px 20px;
+    padding: 12px 24px;
     margin: 10px;
     cursor: pointer;
+    font-size: 16px;
+    border: 1px solid #999;
+    border-radius: 6px;
+}
+
+input[type="file"] {
+    margin-top: 10px;
+    font-size: 15px;
 }
 
 input[type="text"] {
-    width: 80%;
-    padding: 10px;
+    width: 85%;
+    padding: 12px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+
+#uploadResult,
+#searchResult {
+    margin-top: 25px;
+}
+
+#uploadResult p,
+#searchResult p {
     font-size: 16px;
 }
 
 .result-box {
-    background-color: #f1f1f1;
-    padding: 15px;
-    margin-top: 15px;
-    border-radius: 8px;
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+    padding: 18px;
+    margin-top: 18px;
+    border-radius: 10px;
     text-align: left;
+    line-height: 1.6;
+    max-height: 300px;
+    overflow-y: auto;
+    word-spacing: normal;
+    letter-spacing: normal;
+}
+
+.result-box h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.result-box p {
+    white-space: pre-wrap;
+    font-size: 15px;
+    word-spacing: normal;
+    letter-spacing: normal;
+}
+
+hr {
+    margin: 35px 0;
+    border: none;
+    border-top: 1px solid #ddd;
 }
