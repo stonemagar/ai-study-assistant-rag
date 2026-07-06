@@ -85,3 +85,34 @@ hr {
     border: none;
     border-top: 1px solid #ddd;
 }
+
+.answer-box {
+    border-left: 4px solid #2563eb;
+}
+
+.source-box {
+    background-color: #f8fafc;
+}
+
+.secondary-button {
+    margin-top: 15px;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    background-color: #334155;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.secondary-button:hover {
+    background-color: #1e293b;
+}
+
+.sources-panel {
+    margin-top: 15px;
+}
+
+.hidden {
+    display: none;
+}

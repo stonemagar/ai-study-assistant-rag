@@ -1,20 +1,25 @@
 console.log("JavaScript file loaded");
 
 document.addEventListener("DOMContentLoaded", function () {
-    console.log("HTML page fully loaded");
-
     const uploadForm = document.getElementById("uploadForm");
     const fileInput = document.getElementById("fileInput");
     const uploadResult = document.getElementById("uploadResult");
 
-    console.log("Upload form:", uploadForm);
-    console.log("File input:", fileInput);
-    console.log("Upload result:", uploadResult);
+    const questionForm = document.getElementById("questionForm");
+    const questionInput = document.getElementById("questionInput");
+    const searchResult = document.getElementById("searchResult");
+
+    function formatText(text) {
+        if (!text) return "";
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\n/g, "<br>");
+    }
 
     uploadForm.addEventListener("submit", async function (event) {
         event.preventDefault();
-
-        console.log("Upload button clicked");
 
         if (!fileInput.files[0]) {
             uploadResult.innerHTML = "Please choose a file first.";
@@ -32,74 +37,97 @@ document.addEventListener("DOMContentLoaded", function () {
                 body: formData
             });
 
-            console.log("Response received:", response);
-
             const result = await response.json();
-            console.log("Result:", result);
 
             uploadResult.innerHTML = `
-                <p><strong>Status:</strong> ${result.status}</p>
-                <p><strong>Message:</strong> ${result.message}</p>
-                <p><strong>Filename:</strong> ${result.filename}</p>
+                <p><strong>Status:</strong> ${formatText(result.status)}</p>
+                <p><strong>Message:</strong> ${formatText(result.message)}</p>
+                <p><strong>Filename:</strong> ${formatText(result.filename)}</p>
                 <p><strong>Total chunks:</strong> ${result.total_chunks || "N/A"}</p>
                 <p><strong>Total vectors:</strong> ${result.total_vectors || "N/A"}</p>
             `;
         } catch (error) {
-            console.log("Error:", error);
+            console.log("Upload error:", error);
             uploadResult.innerHTML = "Error: Backend is not responding or request is blocked.";
         }
     });
-});
 
-const questionForm = document.getElementById("questionForm");
-const questionInput = document.getElementById("questionInput");
-const searchResult = document.getElementById("searchResult");
+    questionForm.addEventListener("submit", async function (event) {
+        event.preventDefault();
 
-questionForm.addEventListener("submit", async function (event) {
-    event.preventDefault();
+        const question = questionInput.value.trim();
 
-    const question = questionInput.value;
+        if (!question) {
+            searchResult.innerHTML = "Please type a question first.";
+            return;
+        }
 
-    searchResult.innerHTML = "Searching your notes...";
+        searchResult.innerHTML = "Searching your notes...";
 
-    try {
-        const response = await fetch("http://127.0.0.1:5000/ask", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                question: question
-            })
-        });
+        try {
+            const response = await fetch("http://127.0.0.1:5000/ask", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    question: question
+                })
+            });
 
-        const result = await response.json();
+            const result = await response.json();
+            const sources = result.sources || [];
 
-        console.log("Search result:", result);
+            let output = `
+                <p><strong>Question:</strong> ${formatText(result.question)}</p>
 
-        let output = `
-    <p><strong>Question:</strong> ${result.question}</p>
-    <div class="result-box">
-        <h4>AI Answer</h4>
-        <p>${result.answer}</p>
-    </div>
-`;
+                <div class="result-box answer-box">
+                    <h4>AI Answer</h4>
+                    <p>${formatText(result.answer)}</p>
+                </div>
+            `;
 
-output += `<h3>Retrieved Sources</h3>`;
+            if (sources.length > 0) {
+                output += `
+                    <button id="toggleSourcesBtn" class="secondary-button" type="button">
+                        Show Sources
+                    </button>
 
-result.sources.forEach(function (source, index) {
-    output += `
-        <div class="result-box">
-            <h4>Source ${index + 1}</h4>
-            <p>${source}</p>
-        </div>
-    `;
-});
+                    <div id="sourcesContainer" class="sources-panel hidden">
+                        <h3>Retrieved Sources</h3>
+                `;
 
-searchResult.innerHTML = output;
+                sources.forEach(function (source, index) {
+                    output += `
+                        <div class="result-box source-box">
+                            <h4>Source ${index + 1}</h4>
+                            <p>${formatText(source)}</p>
+                        </div>
+                    `;
+                });
 
-    } catch (error) {
-        console.log("Search error:", error);
-        searchResult.innerHTML = "Error: Could not search notes.";
-    }
+                output += `</div>`;
+            }
+
+            searchResult.innerHTML = output;
+
+            const toggleSourcesBtn = document.getElementById("toggleSourcesBtn");
+            const sourcesContainer = document.getElementById("sourcesContainer");
+
+            if (toggleSourcesBtn && sourcesContainer) {
+                toggleSourcesBtn.addEventListener("click", function () {
+                    sourcesContainer.classList.toggle("hidden");
+
+                    if (sourcesContainer.classList.contains("hidden")) {
+                        toggleSourcesBtn.textContent = "Show Sources";
+                    } else {
+                        toggleSourcesBtn.textContent = "Hide Sources";
+                    }
+                });
+            }
+        } catch (error) {
+            console.log("Search error:", error);
+            searchResult.innerHTML = "Error: Could not search notes.";
+        }
+    });
 });
