@@ -36,7 +36,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 method: "POST",
                 body: formData
             });
-
+            
             const result = await response.json();
 
             uploadResult.innerHTML = `
@@ -62,7 +62,12 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        searchResult.innerHTML = "Searching your notes...";
+        const askButton = questionForm.querySelector("button");
+
+        askButton.disabled = true;
+        askButton.textContent = "Thinking...";
+
+        searchResult.innerHTML = "Thinking with your uploaded notes...";
 
         try {
             const response = await fetch("http://127.0.0.1:5000/ask", {
@@ -111,6 +116,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
             searchResult.innerHTML = output;
 
+            askButton.disabled = false;
+            askButton.textContent = "Ask";
+
             const toggleSourcesBtn = document.getElementById("toggleSourcesBtn");
             const sourcesContainer = document.getElementById("sourcesContainer");
 
@@ -128,6 +136,9 @@ document.addEventListener("DOMContentLoaded", function () {
         } catch (error) {
             console.log("Search error:", error);
             searchResult.innerHTML = "Error: Could not search notes.";
+
+            askButton.disabled = false;
+            askButton.textContent = "Ask";
         }
     });
 });
