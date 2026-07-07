@@ -9,6 +9,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const questionInput = document.getElementById("questionInput");
     const searchResult = document.getElementById("searchResult");
 
+    const clearNotesBtn = document.getElementById("clearNotesBtn");
+    const clearResult = document.getElementById("clearResult");
+    
     function formatText(text) {
         if (!text) return "";
         return text
@@ -141,4 +144,37 @@ document.addEventListener("DOMContentLoaded", function () {
             askButton.textContent = "Ask";
         }
     });
+
+    if (clearNotesBtn) {
+        clearNotesBtn.addEventListener("click", async function () {
+            const confirmClear = confirm("Are you sure you want to clear all uploaded notes?");
+
+            if (!confirmClear) {
+                return;
+            }
+
+            clearNotesBtn.disabled = true;
+            clearNotesBtn.textContent = "Clearing...";
+            clearResult.innerHTML = "Clearing uploaded notes...";
+
+            try {
+                const response = await fetch("http://127.0.0.1:5000/clear-notes", {
+                    method: "POST"
+                });
+
+                const result = await response.json();
+
+                clearResult.innerHTML = result.message;
+                searchResult.innerHTML = "";
+                uploadResult.innerHTML = "";
+
+            } catch (error) {
+                console.log("Clear notes error:", error);
+                clearResult.innerHTML = "Error: Could not clear notes.";
+            }
+
+            clearNotesBtn.disabled = false;
+            clearNotesBtn.textContent = "Clear Notes";
+        });
+    }
 });

@@ -1,3 +1,4 @@
+import shutil
 import os
 import re
 import uuid
@@ -327,6 +328,20 @@ Final answer only:
 
     return answer
 
+def empty_folder(folder_path):
+    os.makedirs(folder_path, exist_ok=True)
+
+    for item_name in os.listdir(folder_path):
+        if item_name == ".gitkeep":
+            continue
+
+        item_path = os.path.join(folder_path, item_name)
+
+        if os.path.isdir(item_path):
+            shutil.rmtree(item_path)
+        else:
+            os.remove(item_path)
+
 @app.route("/")
 def home():
     return "AI Study Assistant backend is working."
@@ -440,6 +455,14 @@ def ask_ai():
     results = search_vector_db(question)
     documents = results["documents"][0][:3]
 
+    if not documents:
+        return jsonify({
+            "status": "success",
+            "question": question,
+            "answer": "I could not find this in the uploaded notes.",
+            "sources": []
+        })
+
     answer = generate_ai_answer(question, documents)
 
     return jsonify({
@@ -449,5 +472,36 @@ def ask_ai():
         "sources": documents
     })
 
+@app.route("/clear-notes", methods=["POST"])
+def clear_notes():
+    try:
+        empty_folder(app.config["UPLOAD_FOLDER"])
+        empty_folder(app.config["PROCESSED_FOLDER"])
+
+        os.makedirs(app.config["VECTOR_DB_FOLDER"], exist_ok=True)
+
+        client = chromadb.PersistentClient(path=app.config["VECTOR_DB_FOLDER"])
+
+        try:
+            collection = client.get_collection(name="study_notes")
+            existing_items = collection.get()
+
+            if existing_items["ids"]:
+                collection.delete(ids=existing_items["ids"])
+
+        except Exception:
+            pass
+
+        return jsonify({
+            "status": "success",
+            "message": "Uploaded notes and vector data cleared successfully."
+        })
+
+    except Exception as error:
+        return jsonify({
+            "status": "error",
+            "message": f"Could not clear notes: {str(error)}"
+        }), 500
+    
 if __name__ == "__main__":
     app.run(debug=True)
