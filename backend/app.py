@@ -229,6 +229,65 @@ def get_keyword_score(question, document):
 
     return score
 
+def analyse_question_relevance(question, documents):
+    stop_words = {
+        "what", "when", "where", "which", "who", "why", "how",
+        "is", "are", "was", "were", "the", "a", "an", "and",
+        "or", "to", "of", "in", "on", "for", "with", "about",
+        "can", "could", "should", "would", "tell", "explain",
+        "define", "describe", "fix", "fixed", "reduce", "reduced",
+        "improve", "improved"
+    }
+
+    # Use 3+ letters so small noisy words like "go" are ignored
+    question_words = re.findall(r"\b[a-zA-Z]{3,}\b", question.lower())
+
+    important_words = []
+
+    for word in question_words:
+        if word not in stop_words and word not in important_words:
+            important_words.append(word)
+
+    if not important_words:
+        return {
+            "is_relevant": False,
+            "matched_words": [],
+            "unmatched_words": []
+        }
+
+    combined_text = " ".join(documents).lower()
+
+    matched_words = [
+        word for word in important_words
+        if word in combined_text
+    ]
+
+    unmatched_words = [
+        word for word in important_words
+        if word not in combined_text
+    ]
+
+    return {
+        "is_relevant": len(matched_words) > 0,
+        "matched_words": matched_words,
+        "unmatched_words": unmatched_words
+    }
+
+
+def clean_question(question, unmatched_words):
+    cleaned_question = question
+
+    for word in unmatched_words:
+        cleaned_question = re.sub(
+            rf"\b{re.escape(word)}\b",
+            "",
+            cleaned_question,
+            flags=re.IGNORECASE
+        )
+
+    cleaned_question = re.sub(r"\s+", " ", cleaned_question).strip()
+
+    return cleaned_question
 
 def search_vector_db(question, number_of_results=3):
     client = chromadb.PersistentClient(path=app.config["VECTOR_DB_FOLDER"])
@@ -455,7 +514,9 @@ def ask_ai():
     results = search_vector_db(question)
     documents = results["documents"][0][:3]
 
-    if not documents:
+    relevance = analyse_question_relevance(question, documents)
+
+    if not documents or not relevance["is_relevant"]:
         return jsonify({
             "status": "success",
             "question": question,
@@ -463,7 +524,19 @@ def ask_ai():
             "sources": []
         })
 
-    answer = generate_ai_answer(question, documents)
+    focused_question = clean_question(question, relevance["unmatched_words"])
+
+    answer = generate_ai_answer(focused_question, documents)
+
+    if relevance["unmatched_words"]:
+        missing_terms = ", ".join(
+            f'"{word}"' for word in relevance["unmatched_words"]
+        )
+
+        answer = (
+            f"I could not find information about {missing_terms} "
+            f"in the uploaded notes. {answer}"
+        )
 
     return jsonify({
         "status": "success",
