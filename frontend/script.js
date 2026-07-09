@@ -15,6 +15,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const summaryBtn = document.getElementById("summaryBtn");
     const summaryResult = document.getElementById("summaryResult");
 
+    const quizBtn = document.getElementById("quizBtn");
+    const quizResult = document.getElementById("quizResult");
+
     function formatText(text) {
         if (!text) return "";
         return text
@@ -211,6 +214,36 @@ document.addEventListener("DOMContentLoaded", function () {
 
         summaryBtn.disabled = false;
         summaryBtn.textContent = "Summarise Notes";
+    });
+    }
+
+    if (quizBtn) {
+    quizBtn.addEventListener("click", async function () {
+        quizBtn.disabled = true;
+        quizBtn.textContent = "Generating...";
+        quizResult.innerHTML = "Generating quiz from your uploaded notes...";
+
+        try {
+            const response = await fetch("http://127.0.0.1:5000/generate-quiz", {
+                method: "POST"
+            });
+
+            const result = await response.json();
+
+            quizResult.innerHTML = `
+                <div class="result-box answer-box">
+                    <h4>Generated Quiz</h4>
+                    <p>${formatText(result.quiz)}</p>
+                </div>
+            `;
+
+        } catch (error) {
+            console.log("Quiz error:", error);
+            quizResult.innerHTML = "Error: Could not generate quiz.";
+        }
+
+        quizBtn.disabled = false;
+        quizBtn.textContent = "Generate Quiz";
     });
     }
 });

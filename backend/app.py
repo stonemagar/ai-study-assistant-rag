@@ -1,4 +1,5 @@
 import shutil
+import random
 import os
 import re
 import uuid
@@ -488,6 +489,110 @@ Final summary only:
 
     return summary
 
+def generate_notes_quiz(notes_text):
+    words = notes_text.split()
+    limited_text = " ".join(words[:2500])
+
+    quiz_focus_options = [
+        "definitions and basic concepts",
+        "machine learning types and examples",
+        "model training and evaluation",
+        "overfitting, underfitting and data leakage",
+        "algorithms, regression and classification"
+    ]
+
+    quiz_focus = random.choice(quiz_focus_options)
+    
+    prompt = f"""
+You are an AI Study Assistant.
+
+Create a short quiz using only the uploaded study notes.
+Focus this quiz mainly on: {quiz_focus}
+
+Very important rules:
+
+- Return ONLY the quiz.
+- Do not repeat the uploaded notes.
+- Create between 8 and 12 useful quiz questions.
+- Do not create a section called "Rules".
+- Do not create a section called "Study Notes".
+- Use only information from the uploaded notes.
+- Use British English.
+- Keep the quiz beginner-friendly.
+
+Use exactly this format:
+
+Question 1:
+Question: ...
+Answer: ...
+Explanation: ...
+
+Question 2:
+Question: ...
+Answer: ...
+Explanation: ...
+
+Question 3:
+Question: ...
+Answer: ...
+Explanation: ...
+
+Question 4:
+Question: ...
+Answer: ...
+Explanation: ...
+
+Question 5:
+Question: ...
+Answer: ...
+Explanation: ...
+
+Uploaded notes:
+--- START OF NOTES ---
+{limited_text}
+--- END OF NOTES ---
+
+Final quiz only:
+"""
+
+    model_name = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
+
+    response = requests.post(
+        "http://localhost:11434/api/generate",
+        json={
+            "model": model_name,
+            "prompt": prompt,
+            "stream": False,
+            "options": {
+                "temperature": 0.4
+            }
+        },
+        timeout=180
+    )
+
+    response.raise_for_status()
+
+    result = response.json()
+    quiz = result.get("response", "").strip()
+
+    unwanted_markers = [
+        "Rules:",
+        "**Rules:**",
+        "Study Notes:",
+        "**Study Notes:**",
+        "Uploaded notes:",
+        "**Uploaded notes:**"
+    ]
+
+    for marker in unwanted_markers:
+        if marker in quiz:
+            quiz = quiz.split(marker)[0].strip()
+
+    quiz = quiz.replace("Here is a short quiz using the uploaded study notes:", "").strip()
+    quiz = quiz.replace("Here's a short quiz using the uploaded study notes:", "").strip()
+
+    return quiz
+
 def empty_folder(folder_path):
     os.makedirs(folder_path, exist_ok=True)
 
@@ -708,6 +813,23 @@ def summarise_notes():
     return jsonify({
         "status": "success",
         "summary": summary
+    })
+
+@app.route("/generate-quiz", methods=["POST"])
+def generate_quiz():
+    notes_text = get_all_notes_text()
+
+    if not notes_text:
+        return jsonify({
+            "status": "success",
+            "quiz": "No uploaded notes found. Please upload a PDF first."
+        })
+
+    quiz = generate_notes_quiz(notes_text)
+
+    return jsonify({
+        "status": "success",
+        "quiz": quiz
     })
 
 if __name__ == "__main__":
