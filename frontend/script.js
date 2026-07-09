@@ -18,6 +18,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const quizBtn = document.getElementById("quizBtn");
     const quizResult = document.getElementById("quizResult");
 
+    const viewNotesButton = document.getElementById("viewNotesButton");
+    const uploadedNotesResult = document.getElementById("uploadedNotesResult");
+
     function formatText(text) {
         if (!text) return "";
         return text
@@ -244,6 +247,47 @@ document.addEventListener("DOMContentLoaded", function () {
 
         quizBtn.disabled = false;
         quizBtn.textContent = "Generate Quiz";
-    });
+        });
+    }
+
+  
+    if (viewNotesButton) {
+        viewNotesButton.addEventListener("click", async function () {
+            uploadedNotesResult.innerHTML = "Loading uploaded notes...";
+
+            try {
+                const response = await fetch("http://127.0.0.1:5000/notes");
+                const result = await response.json();
+
+                if (!result.success) {
+                    uploadedNotesResult.innerHTML = "Could not load uploaded notes.";
+                    return;
+                }
+
+                if (result.count === 0) {
+                    uploadedNotesResult.innerHTML = "No notes uploaded yet.";
+                    return;
+                }
+
+                let notesHtml = `<p><strong>Total notes:</strong> ${result.count}</p>`;
+                notesHtml += "<ul>";
+
+                result.notes.forEach(function (note) {
+                    notesHtml += `
+                        <li>
+                            <strong>${formatText(note.file_name)}</strong>
+                            - ${note.file_size_kb} KB
+                        </li>
+                    `;
+                });
+
+                notesHtml += "</ul>";
+
+                uploadedNotesResult.innerHTML = notesHtml;
+
+            } catch (error) {
+                uploadedNotesResult.innerHTML = "Error loading uploaded notes.";
+            }
+        });
     }
 });

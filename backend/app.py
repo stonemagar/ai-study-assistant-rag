@@ -607,6 +607,26 @@ def empty_folder(folder_path):
         else:
             os.remove(item_path)
 
+def get_uploaded_notes():
+    notes = []
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+    for file_name in os.listdir(UPLOAD_FOLDER):
+        if file_name == ".gitkeep":
+            continue
+
+        file_path = os.path.join(UPLOAD_FOLDER, file_name)
+
+        if os.path.isfile(file_path):
+            file_size_kb = round(os.path.getsize(file_path) / 1024, 2)
+
+            notes.append({
+                "file_name": file_name,
+                "file_size_kb": file_size_kb
+            })
+
+    return notes
+
 @app.route("/")
 def home():
     return "AI Study Assistant backend is working."
@@ -832,5 +852,22 @@ def generate_quiz():
         "quiz": quiz
     })
 
+@app.route("/notes", methods=["GET"])
+def view_uploaded_notes():
+    try:
+        notes = get_uploaded_notes()
+
+        return jsonify({
+            "success": True,
+            "count": len(notes),
+            "notes": notes
+        })
+
+    except Exception as error:
+        return jsonify({
+            "success": False,
+            "error": str(error)
+        }), 500
+    
 if __name__ == "__main__":
     app.run(debug=True)

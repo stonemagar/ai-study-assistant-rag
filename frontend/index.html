@@ -2,54 +2,88 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>AI Study Assistant</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Study Assistant with RAG</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
     <div class="container">
-        <h1>AI Study Assistant</h1>
-        <p>Upload your study notes and ask questions using AI.</p>
 
-        <h2>Upload Notes</h2>
+        <header>
+            <h1>AI Study Assistant with RAG</h1>
+            <p>Upload your study notes, ask questions, generate summaries, and create quizzes using your own notes.</p>
+        </header>
 
-        <form id="uploadForm" enctype="multipart/form-data">
-            <input type="file" id="fileInput" name="file" accept=".pdf,.txt,.docx" required>
-            <br><br>
-            <button type="submit">Upload File</button>
-        </form>
+        <main>
 
-        <div id="uploadResult"></div>
+            <!-- Upload Notes Section -->
+            <section class="card">
+                <h2>Upload Notes</h2>
+                <p>Select a PDF file and upload it to the study assistant.</p>
 
-        <button id="clearNotesBtn" class="danger-button" type="button">
-            Clear Notes
-        </button>
+                <form id="uploadForm">
+                    <input type="file" id="fileInput" accept=".pdf,.txt,.docx" required>
+                    <button type="submit">Upload Notes</button>
+                </form>
 
-        <div id="clearResult"></div>
+                <div id="uploadResult" class="result-box"></div>
+            </section>
 
-        <hr>
+            <!-- Uploaded Notes Section -->
+            <section class="card">
+                <h2>Uploaded Notes</h2>
+                <p>View the notes currently stored in the app.</p>
 
-<h2>Ask a Question</h2>
+                <button id="viewNotesButton">View Uploaded Notes</button>
 
-<form id="questionForm">
-    <input type="text" id="questionInput" placeholder="Ask something about your notes" required>
-    <br><br>
-    <button type="submit">Search Notes</button>
-</form>
+                <div id="uploadedNotesResult" class="result-box"></div>
+            </section>
 
-<button id="summaryBtn" class="secondary-button" type="button">
-    Summarise Notes
-</button>
+            <!-- Clear Notes Section -->
+            <section class="card">
+                <h2>Clear Notes</h2>
+                <p>Remove uploaded notes and clear stored note chunks.</p>
 
-<button id="quizBtn" class="secondary-button" type="button">
-    Generate Quiz
-</button>
+                <button id="clearNotesBtn">Clear Notes</button>
 
-<div id="quizResult"></div>
+                <div id="clearResult" class="result-box"></div>
+            </section>
 
-<div id="summaryResult"></div>
+            <!-- Ask Question Section -->
+            <section class="card">
+                <h2>Ask a Question</h2>
+                <p>Ask a question based on your uploaded notes.</p>
 
+                <form id="questionForm">
+                    <textarea id="questionInput" placeholder="Example: What is overfitting?"></textarea>
+                    <button type="submit">Ask</button>
+                </form>
 
-<div id="searchResult"></div>
+                <div id="searchResult" class="result-box"></div>
+            </section>
+
+            <!-- Summary Section -->
+            <section class="card">
+                <h2>Summarise Notes</h2>
+                <p>Generate a short study summary from your uploaded notes.</p>
+
+                <button id="summaryBtn">Summarise Notes</button>
+
+                <div id="summaryResult" class="result-box"></div>
+            </section>
+
+            <!-- Quiz Section -->
+            <section class="card">
+                <h2>Generate Quiz</h2>
+                <p>Create quiz questions from your uploaded notes.</p>
+
+                <button id="quizBtn">Generate Quiz</button>
+
+                <div id="quizResult" class="result-box"></div>
+            </section>
+
+        </main>
 
     </div>
 
