@@ -24,6 +24,9 @@ The aim of this project is to build a simple AI-powered study assistant that ans
 - Generate quiz questions from notes
 - Clear uploaded notes and stored data
 - Loading message while the AI is thinking
+- View uploaded notes
+- Auto-refresh uploaded notes list
+- Delete individual uploaded notes
 
 ## Technologies Used
 
