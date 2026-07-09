@@ -513,6 +513,7 @@ def ask_ai():
 
     results = search_vector_db(question)
     documents = results["documents"][0][:3]
+    metadatas = results["metadatas"][0][:3]
 
     relevance = analyse_question_relevance(question, documents)
 
@@ -521,7 +522,8 @@ def ask_ai():
             "status": "success",
             "question": question,
             "answer": "I could not find this in the uploaded notes.",
-            "sources": []
+            "sources": [],
+            "source_details": []
         })
 
     focused_question = clean_question(question, relevance["unmatched_words"])
@@ -538,11 +540,24 @@ def ask_ai():
             f"in the uploaded notes. {answer}"
         )
 
+    source_details = []
+
+    for index, document in enumerate(documents):
+        metadata = metadatas[index]
+
+        source_details.append({
+            "source_number": index + 1,
+            "source_file": metadata.get("source_file", "Unknown file"),
+            "chunk_number": metadata.get("chunk_number", "Unknown chunk"),
+            "text": document
+        })
+
     return jsonify({
         "status": "success",
         "question": question,
         "answer": answer,
-        "sources": documents
+        "sources": documents,
+        "source_details": source_details
     })
 
 @app.route("/clear-notes", methods=["POST"])

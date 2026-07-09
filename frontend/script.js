@@ -84,7 +84,7 @@ document.addEventListener("DOMContentLoaded", function () {
             });
 
             const result = await response.json();
-            const sources = result.sources || [];
+            const sources = result.source_details || [];
 
             let output = `
                 <p><strong>Question:</strong> ${formatText(result.question)}</p>
@@ -105,11 +105,14 @@ document.addEventListener("DOMContentLoaded", function () {
                         <h3>Retrieved Sources</h3>
                 `;
 
-                sources.forEach(function (source, index) {
+                sources.forEach(function (source) {
                     output += `
                         <div class="result-box source-box">
-                            <h4>Source ${index + 1}</h4>
-                            <p>${formatText(source)}</p>
+                            <h4>Source ${source.source_number}</h4>
+                            <p><strong>File:</strong> ${formatText(source.source_file)}</p>
+                            <p><strong>Chunk:</strong> ${formatText(String(source.chunk_number))}</p>
+                            <p><strong>Text:</strong></p>
+                            <p>${formatText(source.text)}</p>
                         </div>
                     `;
                 });
