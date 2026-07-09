@@ -59,6 +59,12 @@ document.addEventListener("DOMContentLoaded", function () {
                     <li>
                         <strong>${formatText(note.file_name)}</strong>
                         - ${note.file_size_kb} KB
+                        <button 
+                            class="delete-note-btn secondary-button" 
+                            type="button"
+                            data-file-name="${encodeURIComponent(note.file_name)}">
+                            Delete
+                        </button>
                     </li>
                 `;
             });
@@ -66,6 +72,47 @@ document.addEventListener("DOMContentLoaded", function () {
             notesHtml += "</ul>";
 
             uploadedNotesResult.innerHTML = notesHtml;
+
+    const deleteNoteButtons = document.querySelectorAll(".delete-note-btn");
+
+    deleteNoteButtons.forEach(function (button) {
+        button.addEventListener("click", async function () {
+            const fileName = decodeURIComponent(button.dataset.fileName);
+
+            const confirmDelete = confirm(`Delete ${fileName}?`);
+
+            if (!confirmDelete) {
+                return;
+            }
+
+            button.disabled = true;
+            button.textContent = "Deleting...";
+
+            try {
+                const response = await fetch("http://127.0.0.1:5000/delete-note", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        file_name: fileName
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!result.success) {
+                    alert(result.message || "Could not delete note.");
+                }
+
+                await loadUploadedNotes(false);
+
+            } catch (error) {
+                console.log("Delete note error:", error);
+                alert("Error deleting note.");
+            }
+        });
+    });
 
         } catch (error) {
             console.log("Load uploaded notes error:", error);

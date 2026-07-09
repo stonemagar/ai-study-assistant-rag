@@ -627,6 +627,55 @@ def get_uploaded_notes():
 
     return notes
 
+def delete_single_note(file_name):
+    safe_file_name = secure_filename(file_name)
+
+    if not safe_file_name:
+        return False, "Invalid file name."
+
+    upload_path = os.path.join(UPLOAD_FOLDER, safe_file_name)
+
+    if not os.path.exists(upload_path):
+        return False, "File not found."
+
+    # Delete uploaded file
+    os.remove(upload_path)
+
+    # Delete related processed text/chunk files
+    original_name_without_extension = os.path.splitext(safe_file_name)[0]
+
+    os.makedirs(PROCESSED_FOLDER, exist_ok=True)
+
+    for item_name in os.listdir(PROCESSED_FOLDER):
+        if item_name == ".gitkeep":
+            continue
+
+        item_path = os.path.join(PROCESSED_FOLDER, item_name)
+
+        if item_name.startswith(original_name_without_extension):
+            if os.path.isdir(item_path):
+                shutil.rmtree(item_path)
+            else:
+                os.remove(item_path)
+
+    # Delete related chunks from ChromaDB
+    try:
+        client = chromadb.PersistentClient(path=VECTOR_DB_FOLDER)
+
+        # Use the same collection name that your upload/search functions use
+        collection = client.get_or_create_collection(name="study_notes")
+
+        collection.delete(
+            where={
+                "source_file": safe_file_name
+            }
+        )
+
+    except Exception as error:
+        print("Vector delete warning:", error)
+
+    return True, f"{safe_file_name} deleted successfully."
+
 @app.route("/")
 def home():
     return "AI Study Assistant backend is working."
@@ -869,5 +918,24 @@ def view_uploaded_notes():
             "error": str(error)
         }), 500
     
+@app.route("/delete-note", methods=["POST"])
+def delete_note():
+    try:
+        data = request.get_json()
+        file_name = data.get("file_name", "")
+
+        success, message = delete_single_note(file_name)
+
+        return jsonify({
+            "success": success,
+            "message": message
+        })
+
+    except Exception as error:
+        return jsonify({
+            "success": False,
+            "error": str(error)
+        }), 500
+        
 if __name__ == "__main__":
     app.run(debug=True)
