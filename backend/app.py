@@ -387,6 +387,107 @@ Final answer only:
 
     return answer
 
+def get_all_notes_text():
+    if not os.path.exists(app.config["PROCESSED_FOLDER"]):
+        return ""
+
+    all_text = ""
+
+    for filename in os.listdir(app.config["PROCESSED_FOLDER"]):
+        if filename.endswith(".txt"):
+            file_path = os.path.join(app.config["PROCESSED_FOLDER"], filename)
+
+            with open(file_path, "r", encoding="utf-8") as file:
+                all_text += file.read() + "\n\n"
+
+    return all_text.strip()
+
+
+def generate_notes_summary(notes_text):
+    words = notes_text.split()
+    limited_text = " ".join(words[:2500])
+
+    prompt = f"""
+You are an AI Study Assistant.
+
+Your task is to summarise the uploaded study notes.
+
+Very important rules:
+- Return ONLY the final summary.
+- Do not write "Here's a summary".
+- Do not repeat the rules.
+- Do not repeat the full study notes.
+- Do not create a section called "Rules".
+- Do not create a section called "Study Notes".
+- Use only information from the uploaded notes.
+- Use British English.
+- Keep the answer clear and beginner-friendly.
+
+Use exactly this format:
+
+Short summary:
+- one or two short bullet points
+
+Key points:
+- key point 1
+- key point 2
+- key point 3
+- key point 4
+- key point 5
+
+Important terms:
+- Term: simple meaning
+- Term: simple meaning
+- Term: simple meaning
+- Term: simple meaning
+
+Uploaded notes:
+--- START OF NOTES ---
+{limited_text}
+--- END OF NOTES ---
+
+Final summary only:
+"""
+
+    model_name = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
+
+    response = requests.post(
+        "http://localhost:11434/api/generate",
+        json={
+            "model": model_name,
+            "prompt": prompt,
+            "stream": False,
+            "options": {
+                "temperature": 0
+            }
+        },
+        timeout=180
+    )
+
+    response.raise_for_status()
+
+    result = response.json()
+    summary = result.get("response", "").strip()
+
+    # Clean unwanted prompt-copying from small local models
+    unwanted_markers = [
+        "Rules:",
+        "**Rules:**",
+        "Study Notes:",
+        "**Study Notes:**",
+        "Uploaded notes:",
+        "**Uploaded notes:**"
+    ]
+
+    for marker in unwanted_markers:
+        if marker in summary:
+            summary = summary.split(marker)[0].strip()
+
+    summary = summary.replace("Here's a summary of the uploaded study notes in the requested format:", "").strip()
+    summary = summary.replace("Here is a summary of the uploaded study notes in the requested format:", "").strip()
+
+    return summary
+
 def empty_folder(folder_path):
     os.makedirs(folder_path, exist_ok=True)
 
@@ -591,5 +692,23 @@ def clear_notes():
             "message": f"Could not clear notes: {str(error)}"
         }), 500
     
+
+@app.route("/summarise-notes", methods=["POST"])
+def summarise_notes():
+    notes_text = get_all_notes_text()
+
+    if not notes_text:
+        return jsonify({
+            "status": "success",
+            "summary": "No uploaded notes found. Please upload a PDF first."
+        })
+
+    summary = generate_notes_summary(notes_text)
+
+    return jsonify({
+        "status": "success",
+        "summary": summary
+    })
+
 if __name__ == "__main__":
     app.run(debug=True)

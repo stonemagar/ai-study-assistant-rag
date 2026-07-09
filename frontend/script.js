@@ -12,6 +12,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const clearNotesBtn = document.getElementById("clearNotesBtn");
     const clearResult = document.getElementById("clearResult");
     
+    const summaryBtn = document.getElementById("summaryBtn");
+    const summaryResult = document.getElementById("summaryResult");
+
     function formatText(text) {
         if (!text) return "";
         return text
@@ -179,5 +182,35 @@ document.addEventListener("DOMContentLoaded", function () {
             clearNotesBtn.disabled = false;
             clearNotesBtn.textContent = "Clear Notes";
         });
+    }
+
+    if (summaryBtn) {
+    summaryBtn.addEventListener("click", async function () {
+        summaryBtn.disabled = true;
+        summaryBtn.textContent = "Summarising...";
+        summaryResult.innerHTML = "Summarising your uploaded notes...";
+
+        try {
+            const response = await fetch("http://127.0.0.1:5000/summarise-notes", {
+                method: "POST"
+            });
+
+            const result = await response.json();
+
+            summaryResult.innerHTML = `
+                <div class="result-box answer-box">
+                    <h4>Notes Summary</h4>
+                    <p>${formatText(result.summary)}</p>
+                </div>
+            `;
+
+        } catch (error) {
+            console.log("Summary error:", error);
+            summaryResult.innerHTML = "Error: Could not summarise notes.";
+        }
+
+        summaryBtn.disabled = false;
+        summaryBtn.textContent = "Summarise Notes";
+    });
     }
 });
