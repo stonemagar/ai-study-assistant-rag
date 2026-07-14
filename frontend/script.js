@@ -21,6 +21,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const viewNotesButton = document.getElementById("viewNotesButton");
     const uploadedNotesResult = document.getElementById("uploadedNotesResult");
 
+    const answerHistoryResult = document.getElementById("answerHistoryResult");
+    const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+
+    let answerHistory = [];
+
     function formatText(text) {
         if (!text) return "";
         return text
@@ -28,6 +33,29 @@ document.addEventListener("DOMContentLoaded", function () {
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
             .replace(/\n/g, "<br>");
+    }
+
+    function renderAnswerHistory() {
+        if (!answerHistoryResult) return;
+
+        if (answerHistory.length === 0) {
+            answerHistoryResult.innerHTML = "No questions asked yet.";
+            return;
+        }
+
+        let historyHtml = "";
+
+        answerHistory.forEach(function (item, index) {
+            historyHtml += `
+                <div class="result-box answer-box">
+                    <h4>Question ${index + 1}</h4>
+                    <p><strong>Question:</strong> ${formatText(item.question)}</p>
+                    <p><strong>Answer:</strong> ${formatText(item.answer)}</p>
+                </div>
+            `;
+        });
+
+        answerHistoryResult.innerHTML = historyHtml;
     }
 
     async function loadUploadedNotes(showLoading = false) {
@@ -232,6 +260,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 searchResult.innerHTML = output;
 
+                answerHistory.unshift({
+                    question: result.question,
+                    answer: result.answer
+                });
+
+                if (answerHistory.length > 5) {
+                    answerHistory.pop();
+                }
+
+                renderAnswerHistory();
+
                 const toggleSourcesBtn = document.getElementById("toggleSourcesBtn");
                 const sourcesContainer = document.getElementById("sourcesContainer");
 
@@ -361,4 +400,13 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     loadUploadedNotes(false);
+
+    if (clearHistoryBtn) {
+        clearHistoryBtn.addEventListener("click", function () {
+            answerHistory = [];
+            renderAnswerHistory();
+        });
+    }
+
+    renderAnswerHistory();
 });
