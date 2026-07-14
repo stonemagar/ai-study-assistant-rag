@@ -27,6 +27,8 @@ The aim of this project is to build a simple AI-powered study assistant that ans
 - View uploaded notes
 - Auto-refresh uploaded notes list
 - Delete individual uploaded notes
+- Answer history for recent questions and answers
+- Clear answer history
 
 ## Technologies Used
 
