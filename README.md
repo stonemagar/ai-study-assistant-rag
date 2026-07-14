@@ -29,6 +29,7 @@ The aim of this project is to build a simple AI-powered study assistant that ans
 - Delete individual uploaded notes
 - Answer history for recent questions and answers
 - Clear answer history
+- Copy AI answers to clipboard
 
 ## Technologies Used
 
