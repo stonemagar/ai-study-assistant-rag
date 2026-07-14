@@ -230,6 +230,10 @@ document.addEventListener("DOMContentLoaded", function () {
                     <div class="result-box answer-box">
                         <h4>AI Answer</h4>
                         <p>${formatText(result.answer)}</p>
+
+                        <button id="copyAnswerBtn" class="secondary-button" type="button">
+                            Copy Answer
+                        </button>
                     </div>
                 `;
 
@@ -259,7 +263,30 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 searchResult.innerHTML = output;
+                
+                const copyAnswerBtn = document.getElementById("copyAnswerBtn");
 
+    if (copyAnswerBtn) {
+        copyAnswerBtn.addEventListener("click", async function () {
+            try {
+                await navigator.clipboard.writeText(result.answer);
+
+                copyAnswerBtn.textContent = "Copied!";
+
+                setTimeout(function () {
+                    copyAnswerBtn.textContent = "Copy Answer";
+                }, 1500);
+
+            } catch (error) {
+                console.log("Copy answer error:", error);
+                copyAnswerBtn.textContent = "Copy failed";
+
+                setTimeout(function () {
+                    copyAnswerBtn.textContent = "Copy Answer";
+                }, 1500);
+            }
+        });
+    }
                 answerHistory.unshift({
                     question: result.question,
                     answer: result.answer
